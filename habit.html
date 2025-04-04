@@ -5,29 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Habit Tracker</title>
   <style>
+    :root {
+      --bg: #f4f4f4;
+      --text: #111;
+      --card: #fff;
+    }
+    body.dark {
+      --bg: #121212;
+      --text: #f4f4f4;
+      --card: #1e1e1e;
+    }
     body {
       font-family: sans-serif;
       margin: 20px;
-      background: #f4f4f4;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
     }
     h1 {
       text-align: center;
     }
-    #habit-form {
+    #controls {
       display: flex;
       justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
       margin-bottom: 20px;
     }
-    #habit-form input {
+    input, button {
       padding: 10px;
       font-size: 16px;
     }
-    #habit-form button {
-      padding: 10px;
-      margin-left: 10px;
-    }
     .habit {
-      background: #fff;
+      background: var(--card);
       padding: 15px;
       margin-bottom: 10px;
       border-radius: 6px;
@@ -36,17 +46,22 @@
     .habit h2 {
       margin: 0 0 10px;
     }
+    .habit input[type="text"] {
+      font-size: 18px;
+      padding: 5px;
+      width: 70%;
+    }
     .habit .dates {
       display: flex;
       gap: 5px;
       flex-wrap: wrap;
+      margin-top: 10px;
     }
     .date {
       padding: 5px 10px;
       border: 1px solid #ccc;
       border-radius: 4px;
       cursor: pointer;
-      user-select: none;
     }
     .done {
       background: lightgreen;
@@ -61,25 +76,32 @@
       cursor: pointer;
       color: red;
     }
+    .percent {
+      font-size: 14px;
+      margin-top: 5px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
 
 <h1>🗓️ My Habit Tracker</h1>
 
-<div id="habit-form">
+<div id="controls">
   <input type="text" id="habit-name" placeholder="New habit...">
-  <button onclick="addHabit()">Add Habit</button>
+  <button onclick="addHabit()">Add</button>
+  <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+  <button onclick="exportHabits()">Export</button>
+  <input type="file" id="importFile" style="display:none" accept=".json" onchange="importHabits(event)">
+  <button onclick="document.getElementById('importFile').click()">Import</button>
 </div>
 
 <div id="habits-container"></div>
 
 <script>
-  const days = 30; // show last 30 days
+  const days = 30;
   const habitsKey = 'myHabitTrackerData';
-
   const today = new Date();
-  const todayStr = dateToString(today);
 
   function dateToString(date) {
     return date.toISOString().split('T')[0];
@@ -95,16 +117,19 @@
     return dates;
   }
 
-  let habits = JSON.parse(localStorage.getItem(habitsKey)) || [];
+  function loadHabits() {
+    return JSON.parse(localStorage.getItem(habitsKey)) || [];
+  }
 
   function saveHabits() {
     localStorage.setItem(habitsKey, JSON.stringify(habits));
   }
 
+  let habits = loadHabits();
+
   function addHabit() {
     const name = document.getElementById('habit-name').value.trim();
     if (!name) return;
-
     habits.push({ name, dates: [] });
     document.getElementById('habit-name').value = '';
     saveHabits();
@@ -146,6 +171,56 @@
     }
   }
 
+  function updateName(index, newName) {
+    habits[index].name = newName;
+    saveHabits();
+  }
+
+  function getCompletionPercent(dates) {
+    const past = getPastDates(days);
+    let count = 0;
+    past.forEach(date => {
+      if (dates.includes(date)) count++;
+    });
+    return Math.round((count / days) * 100);
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+  }
+
+  function exportHabits() {
+    const blob = new Blob([JSON.stringify(habits, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "habits_backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importHabits(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          habits = data;
+          saveHabits();
+          render();
+        } else {
+          alert("Invalid file format.");
+        }
+      } catch {
+        alert("Failed to import habits.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function render() {
     const container = document.getElementById('habits-container');
     container.innerHTML = '';
@@ -155,23 +230,35 @@
       const div = document.createElement('div');
       div.className = 'habit';
 
-      const title = document.createElement('h2');
-      title.innerHTML = `${habit.name} <span class="remove-btn" onclick="removeHabit(${habitIndex})">✖</span>`;
-      div.appendChild(title);
+      const titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.value = habit.name;
+      titleInput.onchange = () => updateName(habitIndex, titleInput.value);
+      div.appendChild(titleInput);
+
+      const removeBtn = document.createElement('span');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '✖';
+      removeBtn.onclick = () => removeHabit(habitIndex);
+      div.appendChild(removeBtn);
 
       const streak = document.createElement('div');
       streak.className = 'streak';
       streak.textContent = `🔥 Streak: ${getStreak(habit.dates)} days`;
       div.appendChild(streak);
 
+      const percent = document.createElement('div');
+      percent.className = 'percent';
+      percent.textContent = `✅ ${getCompletionPercent(habit.dates)}% complete (last ${days} days)`;
+      div.appendChild(percent);
+
       const datesDiv = document.createElement('div');
       datesDiv.className = 'dates';
-
       pastDates.forEach(date => {
         const span = document.createElement('span');
         span.className = 'date';
         if (habit.dates.includes(date)) span.classList.add('done');
-        span.textContent = date.slice(5); // show MM-DD
+        span.textContent = date.slice(5);
         span.onclick = () => toggleDate(habitIndex, date);
         datesDiv.appendChild(span);
       });
@@ -179,6 +266,10 @@
       div.appendChild(datesDiv);
       container.appendChild(div);
     });
+  }
+
+  if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark');
   }
 
   render();
