@@ -9,83 +9,96 @@
       --bg: #f4f4f4;
       --text: #111;
       --card: #fff;
+      --primary: #c0ffc0;
+      --highlight: #4CAF50;
     }
+
     body.dark {
       --bg: #121212;
       --text: #f4f4f4;
       --card: #1e1e1e;
+      --primary: #2e7d32;
+      --highlight: #66bb6a;
     }
+
     body {
       font-family: sans-serif;
-      margin: 20px;
       background: var(--bg);
       color: var(--text);
+      margin: 0;
+      padding: 0;
       transition: background 0.3s, color 0.3s;
     }
+
     h1 {
       text-align: center;
+      margin: 1rem 0 0.5rem;
     }
+
     #controls {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      margin-bottom: 1rem;
     }
+
     input, button {
-      padding: 10px;
+      padding: 8px 12px;
       font-size: 16px;
     }
-    .habit {
+
+    #habit-grid-wrapper {
+      overflow-x: auto;
+    }
+
+    #habit-grid {
+      display: grid;
+      grid-template-columns: 200px repeat(21, 1fr);
+      border-top: 1px solid #ccc;
+    }
+
+    .grid-cell {
+      padding: 8px;
+      border-bottom: 1px solid #ccc;
+      border-right: 1px solid #eee;
+      text-align: center;
+      font-size: 13px;
       background: var(--card);
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    .habit h2 {
-      margin: 0 0 10px;
+
+    .grid-header {
+      font-weight: bold;
+      background: #eaeaea;
     }
-    .habit input[type="text"] {
-      font-size: 18px;
-      padding: 5px;
-      width: 70%;
-    }
-    .habit .dates {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-    .date {
-      padding: 5px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .done {
-      background: lightgreen;
+
+    .grid-left {
+      text-align: left;
       font-weight: bold;
     }
-    .streak {
-      font-size: 14px;
-      color: #777;
+
+    .done {
+      background: var(--primary);
+      font-weight: bold;
     }
+
     .remove-btn {
       float: right;
       cursor: pointer;
       color: red;
     }
-    .percent {
-      font-size: 14px;
-      margin-top: 5px;
-      color: #555;
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      margin: 20px;
+      color: #888;
     }
   </style>
 </head>
 <body>
 
-<h1>🗓️ My Habit Tracker</h1>
+<h1>📅 My Habit Tracker</h1>
 
 <div id="controls">
   <input type="text" id="habit-name" placeholder="New habit...">
@@ -96,10 +109,14 @@
   <button onclick="document.getElementById('importFile').click()">Import</button>
 </div>
 
-<div id="habits-container"></div>
+<div id="habit-grid-wrapper">
+  <div id="habit-grid"></div>
+</div>
+
+<div class="footer">everyday-style layout clone — local storage, no account needed.</div>
 
 <script>
-  const days = 30;
+  const days = 21;
   const habitsKey = 'myHabitTrackerData';
   const today = new Date();
 
@@ -163,6 +180,15 @@
     return streak;
   }
 
+  function getCompletionPercent(dates) {
+    const past = getPastDates(days);
+    let count = 0;
+    past.forEach(date => {
+      if (dates.includes(date)) count++;
+    });
+    return Math.round((count / days) * 100);
+  }
+
   function removeHabit(index) {
     if (confirm('Delete this habit?')) {
       habits.splice(index, 1);
@@ -174,15 +200,6 @@
   function updateName(index, newName) {
     habits[index].name = newName;
     saveHabits();
-  }
-
-  function getCompletionPercent(dates) {
-    const past = getPastDates(days);
-    let count = 0;
-    past.forEach(date => {
-      if (dates.includes(date)) count++;
-    });
-    return Math.round((count / days) * 100);
   }
 
   function toggleDarkMode() {
@@ -222,50 +239,51 @@
   }
 
   function render() {
-    const container = document.getElementById('habits-container');
-    container.innerHTML = '';
+    const grid = document.getElementById('habit-grid');
+    grid.innerHTML = '';
+
     const pastDates = getPastDates(days);
 
-    habits.forEach((habit, habitIndex) => {
-      const div = document.createElement('div');
-      div.className = 'habit';
-
-      const titleInput = document.createElement('input');
-      titleInput.type = 'text';
-      titleInput.value = habit.name;
-      titleInput.onchange = () => updateName(habitIndex, titleInput.value);
-      div.appendChild(titleInput);
-
-      const removeBtn = document.createElement('span');
-      removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '✖';
-      removeBtn.onclick = () => removeHabit(habitIndex);
-      div.appendChild(removeBtn);
-
-      const streak = document.createElement('div');
-      streak.className = 'streak';
-      streak.textContent = `🔥 Streak: ${getStreak(habit.dates)} days`;
-      div.appendChild(streak);
-
-      const percent = document.createElement('div');
-      percent.className = 'percent';
-      percent.textContent = `✅ ${getCompletionPercent(habit.dates)}% complete (last ${days} days)`;
-      div.appendChild(percent);
-
-      const datesDiv = document.createElement('div');
-      datesDiv.className = 'dates';
-      pastDates.forEach(date => {
-        const span = document.createElement('span');
-        span.className = 'date';
-        if (habit.dates.includes(date)) span.classList.add('done');
-        span.textContent = date.slice(5);
-        span.onclick = () => toggleDate(habitIndex, date);
-        datesDiv.appendChild(span);
-      });
-
-      div.appendChild(datesDiv);
-      container.appendChild(div);
+    // Render header row
+    grid.appendChild(makeCell('Habit', 'grid-cell grid-header grid-left'));
+    pastDates.forEach(date => {
+      const d = new Date(date);
+      const label = d.toDateString().slice(4, 10);
+      grid.appendChild(makeCell(label, 'grid-cell grid-header'));
     });
+
+    // Render habit rows
+    habits.forEach((habit, index) => {
+      // Left cell: habit name + info
+      const leftCell = document.createElement('div');
+      leftCell.className = 'grid-cell grid-left';
+      leftCell.innerHTML = `
+        <input type="text" value="${habit.name}" style="width: 100%; font-weight: bold; border: none; background: transparent; color: var(--text);" 
+               onchange="updateName(${index}, this.value)">
+        <div style="font-size: 12px; margin-top: 4px;">
+          🔥 ${getStreak(habit.dates)}d &nbsp; ✅ ${getCompletionPercent(habit.dates)}% 
+          <span class="remove-btn" onclick="removeHabit(${index})">✖</span>
+        </div>
+      `;
+      grid.appendChild(leftCell);
+
+      // Date boxes
+      pastDates.forEach(date => {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        if (habit.dates.includes(date)) cell.classList.add('done');
+        cell.textContent = date.slice(5);
+        cell.onclick = () => toggleDate(index, date);
+        grid.appendChild(cell);
+      });
+    });
+  }
+
+  function makeCell(text, className = '') {
+    const cell = document.createElement('div');
+    cell.className = className;
+    cell.textContent = text;
+    return cell;
   }
 
   if (localStorage.getItem('darkMode') === 'true') {
