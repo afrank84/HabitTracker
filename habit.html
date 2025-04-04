@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Habit Tracker</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    #habit-form {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    #habit-form input {
+      padding: 10px;
+      font-size: 16px;
+    }
+    #habit-form button {
+      padding: 10px;
+      margin-left: 10px;
+    }
+    .habit {
+      background: #fff;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .habit h2 {
+      margin: 0 0 10px;
+    }
+    .habit .dates {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .date {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .done {
+      background: lightgreen;
+      font-weight: bold;
+    }
+    .streak {
+      font-size: 14px;
+      color: #777;
+    }
+    .remove-btn {
+      float: right;
+      cursor: pointer;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🗓️ My Habit Tracker</h1>
+
+<div id="habit-form">
+  <input type="text" id="habit-name" placeholder="New habit...">
+  <button onclick="addHabit()">Add Habit</button>
+</div>
+
+<div id="habits-container"></div>
+
+<script>
+  const days = 30; // show last 30 days
+  const habitsKey = 'myHabitTrackerData';
+
+  const today = new Date();
+  const todayStr = dateToString(today);
+
+  function dateToString(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  function getPastDates(n) {
+    const dates = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(dateToString(d));
+    }
+    return dates;
+  }
+
+  let habits = JSON.parse(localStorage.getItem(habitsKey)) || [];
+
+  function saveHabits() {
+    localStorage.setItem(habitsKey, JSON.stringify(habits));
+  }
+
+  function addHabit() {
+    const name = document.getElementById('habit-name').value.trim();
+    if (!name) return;
+
+    habits.push({ name, dates: [] });
+    document.getElementById('habit-name').value = '';
+    saveHabits();
+    render();
+  }
+
+  function toggleDate(habitIndex, date) {
+    const habit = habits[habitIndex];
+    const idx = habit.dates.indexOf(date);
+    if (idx >= 0) {
+      habit.dates.splice(idx, 1);
+    } else {
+      habit.dates.push(date);
+    }
+    saveHabits();
+    render();
+  }
+
+  function getStreak(dates) {
+    let streak = 0;
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const str = dateToString(d);
+      if (dates.includes(str)) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function removeHabit(index) {
+    if (confirm('Delete this habit?')) {
+      habits.splice(index, 1);
+      saveHabits();
+      render();
+    }
+  }
+
+  function render() {
+    const container = document.getElementById('habits-container');
+    container.innerHTML = '';
+    const pastDates = getPastDates(days);
+
+    habits.forEach((habit, habitIndex) => {
+      const div = document.createElement('div');
+      div.className = 'habit';
+
+      const title = document.createElement('h2');
+      title.innerHTML = `${habit.name} <span class="remove-btn" onclick="removeHabit(${habitIndex})">✖</span>`;
+      div.appendChild(title);
+
+      const streak = document.createElement('div');
+      streak.className = 'streak';
+      streak.textContent = `🔥 Streak: ${getStreak(habit.dates)} days`;
+      div.appendChild(streak);
+
+      const datesDiv = document.createElement('div');
+      datesDiv.className = 'dates';
+
+      pastDates.forEach(date => {
+        const span = document.createElement('span');
+        span.className = 'date';
+        if (habit.dates.includes(date)) span.classList.add('done');
+        span.textContent = date.slice(5); // show MM-DD
+        span.onclick = () => toggleDate(habitIndex, date);
+        datesDiv.appendChild(span);
+      });
+
+      div.appendChild(datesDiv);
+      container.appendChild(div);
+    });
+  }
+
+  render();
+</script>
+
+</body>
+</html>
