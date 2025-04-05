@@ -48,6 +48,16 @@
       font-size: 16px;
     }
 
+    .today-col {
+        background: #d0d0ff !important; /* light blue or any soft highlight */
+        color: #000;
+        font-weight: bold;
+    }
+
+    .today-col.done {
+    box-shadow: 0 0 0 3px yellow inset;
+    }
+
     #habit-grid-wrapper {
       overflow-x: auto;
     }
@@ -247,11 +257,10 @@
     // Render header row
     grid.appendChild(makeCell('Habit', 'grid-cell grid-header grid-left'));
     pastDates.forEach(date => {
-      const d = new Date(date);
-      const label = d.toDateString().slice(4, 10);
-      grid.appendChild(makeCell(label, 'grid-cell grid-header'));
+        const label = date.slice(5); // MM-DD
+        const isToday = date === dateToString(today);
+        grid.appendChild(makeCell(label, 'grid-cell grid-header' + (isToday ? ' today-col' : '')));
     });
-
     // Render habit rows
     habits.forEach((habit, index) => {
       // Left cell: habit name + info
@@ -270,7 +279,7 @@
       // Date boxes
       pastDates.forEach(date => {
         const cell = document.createElement('div');
-        cell.className = 'grid-cell';
+        cell.className = 'grid-cell' + (date === dateToString(today) ? ' today-col' : '');
         if (habit.dates.includes(date)) cell.classList.add('done');
         cell.textContent = date.slice(5);
         cell.onclick = () => toggleDate(index, date);
