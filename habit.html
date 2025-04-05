@@ -122,10 +122,15 @@
 <div id="habit-grid-wrapper">
   <div id="habit-grid"></div>
 </div>
+<div id="pagination" style="text-align:center; margin-top:10px;">
+    <button onclick="prevWeek()">◀ Previous</button>
+    <button onclick="nextWeek()">Next ▶</button>
+</div>
 
 <div class="footer">everyday-style layout clone — local storage, no account needed.</div>
 
 <script>
+  let currentOffset = 0; // 0 = current week, 1 = last week, etc.  
   const days = 21;
   const habitsKey = 'myHabitTrackerData';
   const today = new Date();
@@ -134,16 +139,16 @@
     return date.toISOString().split('T')[0];
   }
 
-  function getPastDates(n) {
+  function getPastDates(n, offset = 0) {
     const dates = [];
-    for (let i = n - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      dates.push(dateToString(d));
+    const totalOffset = n * offset;
+    for (let i = n - 1 + totalOffset; i >= totalOffset; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(dateToString(d));
     }
     return dates;
   }
-
   function loadHabits() {
     return JSON.parse(localStorage.getItem(habitsKey)) || [];
   }
@@ -252,7 +257,7 @@
     const grid = document.getElementById('habit-grid');
     grid.innerHTML = '';
 
-    const pastDates = getPastDates(days);
+    const pastDates = getPastDates(days, currentOffset);
 
     // Render header row
     grid.appendChild(makeCell('Habit', 'grid-cell grid-header grid-left'));
@@ -294,6 +299,19 @@
     cell.textContent = text;
     return cell;
   }
+
+  function prevWeek() {
+    currentOffset++;
+    render();
+  }
+
+    function nextWeek() {
+        if (currentOffset > 0) {
+            currentOffset--;
+            render();
+        }
+    }
+
 
   if (localStorage.getItem('darkMode') === 'true') {
     document.body.classList.add('dark');
